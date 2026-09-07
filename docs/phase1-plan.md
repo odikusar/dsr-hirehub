@@ -84,7 +84,7 @@ dsr-hirehub/
 ## Структура фронтенда
 
 ```
-src/
+frontend/               # без src/ — дефолт create-next-app 16
 ├── app/
 │   ├── (public)/jobs, jobs/[id]        # список, детали, форма отклика — без логина
 │   ├── (auth)/login, register          # только HR
