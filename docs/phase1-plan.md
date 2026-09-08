@@ -96,12 +96,13 @@ frontend/               # без src/ — дефолт create-next-app 16
 
 ## Чеклист
 
-### Срез 0 — Скелет
+### Срез 0 — Скелет ✅
 - [x] git init, репо на GitHub (odikusar/dsr-hirehub), SSH-ключ
-- [ ] backend: venv, Django-проект `config`, `GET /api/health/` → `{"status": "ok"}`
-- [ ] frontend: create-next-app (TS, Tailwind, App Router), главная дергает health
-- [ ] Docker Compose: postgres + backend + frontend; Django на Postgres
-- [ ] коммит: скелет ходит end-to-end
+- [x] backend: uv, Django 6.1, `GET /api/health/` → `{"status": "ok"}` (FBV)
+- [x] frontend: create-next-app 16 (TS, Tailwind, App Router, без src/), главная дергает health (SPA-стиль, "use client"), CORS настроен
+- [x] Docker Compose: postgres 17 + backend + frontend; Django на Postgres (psycopg3, .env + python-dotenv)
+- [x] логирование: console + SQL_DEBUG-переключатель для запросов
+- [x] скелет ходит end-to-end
 
 ### Срез 1 — Users + Auth (только HR)
 - [ ] app `users`: кастомный User, первая миграция, admin, суперюзер
