@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
+    'apps.users'
 ]
 
 MIDDLEWARE = [
@@ -144,8 +145,17 @@ MAILERS = {
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "formatters": {
+        "color": {
+            "()": "colorlog.ColoredFormatter",   # "()" = использовать свой класс форматтера
+            "format": "%(log_color)s%(levelname)-8s%(reset)s %(asctime)s %(name)s %(message)s",
+        },
+    },
     "handlers": {
-        "console": {"class": "logging.StreamHandler"},
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "color",
+        },
     },
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
@@ -156,3 +166,5 @@ LOGGING = {
         },
     },
 }
+
+AUTH_USER_MODEL = "users.User"

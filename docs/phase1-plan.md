@@ -105,8 +105,9 @@ frontend/               # без src/ — дефолт create-next-app 16
 - [x] скелет ходит end-to-end
 
 ### Срез 1 — Users + Auth (только HR)
-- [ ] app `users`: кастомный User, первая миграция, admin, суперюзер
-- [ ] SimpleJWT: register / login / refresh / logout / me; auth-класс, читающий JWT из cookie
+- [x] app `users` (в `apps/`): кастомный User (email-логин, role), пересозданная БД, admin, суперюзер
+- [x] `POST /api/auth/register/` (CreateAPIView) + тестовый `GET /api/auth/users/<pk>/` (ручной APIView; удалить позже)
+- [ ] SimpleJWT: login / refresh / logout / me; auth-класс, читающий JWT из cookie
 - [ ] фронт: login/register (RHF + Zod), api-клиент, `useAuth`, защищённые HR-роуты
 
 ### Срез 2 — Jobs
