@@ -9,7 +9,7 @@
 - **Кандидаты без аккаунтов (решение от 2026-09-07):** в Phase 1 регистрируются и логинятся только HR. Вакансии и форма отклика — публичные, отклик анонимный (контакты — поля в Application). Кандидатские аккаунты и «мои отклики» — кандидат в отдельную будущую фазу.
 - **Auth:** JWT (SimpleJWT) в httpOnly cookies, только для HR. Эндпоинты: register / login / refresh / logout / me.
 - **Структура Django:** доменные apps — `users`, `jobs`, `applications` (`resumes` появится в Phase 3).
-- **CQRS:** в Phase 1 не вводим — классический DRF (ViewSet/serializers). CQRS-рефакторинг — начало Phase 2 («learn before abstracting»).
+- **CQRS:** в Phase 1 не вводим — классический DRF (ViewSet/serializers). CQRS-рефакторинг — начало Phase 2 («learn before abstracting»). Там же Dependency Injection: сначала ручной (зависимости через конструкторы handlers), потом контейнер `dependency-injector`.
 - **Django project:** называется `config`, лежит в `backend/`.
 
 ## Структура репозитория
@@ -107,20 +107,44 @@ frontend/               # без src/ — дефолт create-next-app 16
 ### Срез 1 — Users + Auth (только HR)
 - [x] app `users` (в `apps/`): кастомный User (email-логин, role), пересозданная БД, admin, суперюзер
 - [x] `POST /api/auth/register/` (CreateAPIView) + тестовый `GET /api/auth/users/<pk>/` (ручной APIView; удалить позже)
-- [ ] SimpleJWT: login / refresh / logout / me; auth-класс, читающий JWT из cookie
-- [ ] фронт: login/register (RHF + Zod), api-клиент, `useAuth`, защищённые HR-роуты
+- [x] SimpleJWT: login / refresh / logout / me; `CookieJWTAuthentication` (JWT из httpOnly cookie); хелперы кук в `apps/users/cookies.py`. Отложено в Phase 2: ротация refresh + blacklist, secure=True
+- [ ] фронт: login/register (RHF + Zod), api-клиент (credentials: "include" + CORS_ALLOW_CREDENTIALS!), `useAuth`, защищённые HR-роуты
 
 ### Срез 2 — Jobs
 - [ ] модель Job, миграция, admin
 - [ ] JobViewSet + router, permissions, `/mine/`, пагинация, поиск, фильтры
+- [ ] drf-spectacular: OpenAPI-схема + Swagger UI (`/api/docs/`); `@extend_schema` для ручных APIView (login и т.п.)
 - [ ] фронт: список, детали, HR-кабинет (создание/редактирование/закрытие)
 
 ### Срез 3 — Applications
 - [ ] модель Application + UniqueConstraint(job, applicant_email), миграция, admin
+- [ ] **составной apply-payload** (упражнение «солянка»): вложенный JSON
+      `{applicant: {name, email, address: {city, country}}, application: {cover_note, expected_salary, years_of_experience}, agree_to_terms}` —
+      чистый `serializers.Serializer` (без модели), nested-сериализаторы,
+      `validate_<field>` (agree_to_terms), кросс-полевой `validate()`
+      (например: expected_salary обязателен при years_of_experience > 0),
+      кастомный `create()` **с созданием двух моделей** (Application + Address)
+      внутри `transaction.atomic`
+- [ ] модель Address (city, country; FK из Application) — оправдание: matching по
+      location в спеке (раздел 13, scoring v2)
 - [ ] API: публичный apply, отклики HR, смена статуса; permissions
-- [ ] фронт: публичная форма отклика (имя, email, cover note…), отклики и смена статуса у HR
+- [ ] фронт: публичная форма отклика в несколько секций (Zod-схема зеркалит вложенность), отклики и смена статуса у HR
+
+> В Phase 3 apply дорастёт до мульти-модельного: Application + Resume (файл),
+> создание двух моделей в `transaction.atomic` — вторая часть упражнения.
 
 ### Срез 4 — Полировка
 - [ ] loading / error / empty states
 - [ ] README с инструкцией запуска
 - [ ] ручной прогон candidate- и HR-флоу, сверка с критериями успеха (спека, раздел 16)
+
+## Отложенные упражнения (не забыть)
+
+- [x] ~~Составной POST-payload~~ → встроено в срез 3 (составной apply + Address). Возможное развитие: Company как модель (сейчас `company_name` — строка в Job) при регистрации HR; Resume в Phase 3.
+- [ ] **Шифрование PII-полей** → Phase 2 (security, «PII encryption at rest» из спеки): Fernet из `cryptography`, ключ в env, EncryptedField-миксин. Кандидаты: `applicant_email`, Address. Трейд-офф для проработки: шифрованная колонка = TextField → не фильтруется/не индексируется (решение: hash-колонка рядом для точного поиска).
+- [ ] **PydanticJSONField** → Phase 3: кастомное model field (JSONField, отдающий Pydantic-объект) для `Resume.extracted_profile` — структурированный профиль кандидата от LLM. Заодно тема «кастомные поля» (`from_db_value` / `get_prep_value`). Референс: `ironsides/backend/src/core/fields.py`.
+- [ ] **Result-паттерн + response-хелперы** → Phase 2 (вместе с CQRS): handlers возвращают Result (success/output/exception) вместо голых данных; единые конверты ответов (record/collection/scalar/empty/error) — единообразная пагинация и ошибки во всём API. Референс: `ironsides/backend/src/api/responses.py` + `core/results.py`.
+- [ ] **Pydantic params + schemas** → Phase 2 (вторая половина CQRS-пазла): `<app>/params.py` — типизированные входы операций (CreateXParams/UpdateXParams/GetXParams — по сути объекты команд), свои типы-примитивы с нормализацией (StrippedStr, NormalizedEmail), тристейт None/""/"значение" для PATCH; `<app>/schemas.py` — типизированные структуры домена (в т.ч. формы JSON-колонок — связка с PydanticJSONField). Референс: `ironsides/backend/src/contacts/params.py`, `contacts/schemas.py`, `core/params.py`, `core/types.py`. Третий этаж — `core/forms.py`: BaseForm (Pydantic, не django.forms!) = Params + доменная валидация с контекстом (`build(params, record, current_user=...)`, PrivateAttr, `exclude_unset` для PATCH-тристейта) + `assign(instance)` для переноса на модель.
+- [ ] Вынести `SECRET_KEY` из settings.py в `.env`
+- [ ] Удалить тестовый `GET /api/auth/users/<pk>/` (или переосмыслить)
+- [ ] ruff (format + lint) для backend
