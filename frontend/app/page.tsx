@@ -1,25 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+// import { TestComponent } from "./sandbox/testComponent"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:18000";
 type BackendStatus = "loading" | "ok" | "error";
 
 export default function Home() {
   const [status, setStatus] = useState<BackendStatus>("loading");
 
   useEffect(() => {
-    fetch(`${API_URL}/api/health/`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+  api
+      .get<{ status: string }>("/api/health/")
+      .then((data) => {
+        setStatus(data.status === "ok" ? "ok" : "error");
       })
-      .then((data) => setStatus(data.status === "ok" ? "ok" : "error"))
       .catch(() => setStatus("error"));
   }, []);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4">
+      {/* <TestComponent></TestComponent> */}
       <h1 className="text-3xl font-bold">JobMatch Lab</h1>
       <p>
         backend:{" "}
